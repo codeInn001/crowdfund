@@ -61,3 +61,12 @@ function identiconTemplate(_address) {
     </div>
     `
   }
+
+  function notification(_text) {
+    document.querySelector(".alert").style.display = "block"
+    document.querySelector("#notification").textContent = _text
+  }
+  
+  function notificationOff() {
+    document.querySelector(".alert").style.display = "none"
+  }
