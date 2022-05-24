@@ -255,7 +255,7 @@ function renderSearch(searchResult) {
     searchResult.forEach((_hospital) => {
       const newDiv = document.createElement("div")
       newDiv.className = "col-md-4"
-      newDiv.innerHTML = hositalTemplate(_hospital)
+      newDiv.innerHTML = hospitalTemplate(_hospital)
       document.getElementById("marketplace").appendChild(newDiv)
     })
   }
