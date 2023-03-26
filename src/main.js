@@ -171,7 +171,7 @@ window.addEventListener("load", async () => {
   notification("Loading...")
   await connectCeloWallet()
   await getBalance()
-  await getHospitals()
+  await getCampaigns()
   notificationOff()
 });
 
@@ -200,7 +200,7 @@ document
       notification(`${error}.`)
     }
     notification(` You successfully added "${params[0]}".`)
-    getHospitals()
+    getCampaigns()
   })
 
 
