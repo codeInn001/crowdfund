@@ -6,7 +6,7 @@ import erc20Abi from "../contract/erc20.abi.json"
 
 const ERC20_DECIMALS = 18
 const MPContractAddress = "0x752f6Ea76a14a00b9E0005A4018BEf3A6138A42d"
-const cUSDContractAddress = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1"
+const cUSDContractAddress = "0xD3f6896b6F90fE4c93001190b1082d3780643fD6"
 
 let kit
 let contract
