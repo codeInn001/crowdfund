@@ -125,7 +125,7 @@ function campaignTemplate(_campaign) {
           <a class="btn btn-lg btn-outline-dark buyBtn fs-6 p-3" id=${
             _campaign.index
           }>
-            Buy for ${_campign.pledged.shiftedBy(-ERC20_DECIMALS).toFixed(2)} cUSD
+            Buy for ${_campaign.pledged.shiftedBy(-ERC20_DECIMALS).toFixed(2)} cUSD
           </a>
         </div>
       </div>
