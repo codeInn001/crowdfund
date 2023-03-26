@@ -5,12 +5,12 @@ import marketplaceAbi from "../contract/marketplace.abi.json"
 import erc20Abi from "../contract/erc20.abi.json"
 
 const ERC20_DECIMALS = 18
-const MPContractAddress = "0xA176b70A66242B8d7C4775Dc21bf051925f89DA3"
+const MPContractAddress = "0xDCF6d9E342F6e17f0B8079AF8bAc1b681190513D"
 const cUSDContractAddress = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1"
 
 let kit
 let contract
-let hospitals = []
+let campaigns = []
 
 // check if celo wallet extension is available in the browser
 const connectCeloWallet = async function () {
@@ -54,63 +54,58 @@ const getBalance = async function () {
 }
 
 // Fetch hospitals from smart contract
-const getHospitals = async function() {
-  const _hospitalsLength = await contract.methods.getHospitalsLength().call()
-  const _hospitals = []
-  for (let i = 0; i < _hospitalsLength; i++) {
-    let _hospital = new Promise(async (resolve, reject) => {
-      let p = await contract.methods.readHospital(i).call()
+const getCampaigns = async function() {
+  const _campaignsLength = await contract.methods.getCampaignsLength().call()
+  const _campaigns = []
+  for (let i = 0; i < _campaignsLength; i++) {
+    let _campaign = new Promise(async (resolve, reject) => {
+      let p = await contract.methods.readCampaigns(i).call()
       resolve({
         index: i,
-        owner: p[0],
-        name: p[1],
-        image: p[2],
-        location: p[3],
+        creator: p[0],
+        goal: new BigNumber(p[1]),
+        pledged: new BigNumber(p[2]),
+        startAt: new BigNumber(p[3]),
         // location: p[4],
-        price: new BigNumber(p[4]),
-        rating: new BigNumber(p[5]),
-        services: new BigNumber(p[6]),
+        endAt: new BigNumber(p[4]),
+        claimed: new BigNumber(p[5])
       })
     })
-    _hospitals.push(_hospital)
+    _campaigns.push(_campaign)
   }
-  hospitals = await Promise.all(_hospitals)
-  renderHospitals()
+  campaigns = await Promise.all(_campaigns)
+  renderCampaigns()
 }
 
 // display our hospitals in the user interface
-function renderHospitals() {
+function renderCampaigns() {
   document.getElementById("marketplace").innerHTML = ""
-  hospitals.forEach((_hospital) => {
+  campaigns.forEach((_campaign) => {
     const newDiv = document.createElement("div")
     newDiv.className = "col-md-4"
-    newDiv.innerHTML = hospitalTemplate(_hospital)
+    newDiv.innerHTML = campaignTemplate(_campaign)
     document.getElementById("marketplace").appendChild(newDiv)
   })
 
 }
 
 // template for building hospitals user interface
-function hospitalTemplate(_hospital) {
+function campaignTemplate(_campaign) {
   return `
     <div class="card mb-4">
-      <img class="card-img-top" src="${_hospital.image}" alt="${_hospital.name}">
-      <div class="position-absolute top-0 end-0 bg-warning mt-4 px-2 py-1 rounded-start">
-        ${_hospital.services} Services
-      </div>
     
       <div class="card-body text-left p-4 position-relative">
         <div class="translate-middle-y position-absolute top-0">
-        ${identiconTemplate(_hospital.owner)}
+        ${identiconTemplate(_campaign.creator)}
         </div>
-        <h2 class="card-title fs-4 fw-bold mt-2">${_hospital.name}</h2>
+        <h2 class="card-title fs-4 fw-bold mt-2">${_campaign.goal.shiftedBy(-ERC20_DECIMALS).toFixed(2)} cUSD</h2>
         <p class="card-text mt-0">
           <i class="bi bi-geo-alt-fill"></i>
-          <span>${_hospital.location}</span>
+          <span>${_campaign.pledged.shiftedBy(-ERC20_DECIMALS).toFixed(2)} cUSD</span>
         </p>
 
         <div class="rating" data-id=${
-          _hospital.index}>
+          _campaign.index}>
           <i class="rating__star far fa-star" data-id="0"></i>
           <i class="rating__star far fa-star" data-id="1"></i>
           <i class="rating__star far fa-star" data-id="2"></i>
@@ -118,15 +113,19 @@ function hospitalTemplate(_hospital) {
           <i class="rating__star far fa-star" data-id="4"></i>
         </div>
         <p class="card-text mt-4" style="min-height: 30px" id=${
-            _hospital.index}>
-          ${_hospital.rating}/5 rating            
+            _campaign.index}>
+          ${_campaign.startAt}           
+        </p>
+        <p class="card-text mt-4" style="min-height: 30px" id=${
+            _campaign.index}>
+          ${_campaign.endAt}           
         </p>
     
         <div class="d-grid gap-2">
           <a class="btn btn-lg btn-outline-dark buyBtn fs-6 p-3" id=${
-            _hospital.index
+            _campaign.index
           }>
-            Buy for ${_hospital.price.shiftedBy(-ERC20_DECIMALS).toFixed(2)} cUSD
+            Buy for ${_campign.pledged.shiftedBy(-ERC20_DECIMALS).toFixed(2)} cUSD
           </a>
         </div>
       </div>
@@ -211,17 +210,17 @@ document.querySelector("#marketplace").addEventListener("click", async (e) => {
     const index = e.target.id
     notification("⌛ Waiting for payment approval...")
     try {
-      await approve(hospitals[index].price)
+      await approve(campaigns[index].price)
     } catch (error) {
       notification(`${error}.`)
     }
-    notification(` Awaiting payment for order of ambulance from "${hospitals[index].name}..."`)
+    notification(` Awaiting payment for order of ambulance from "${campaigns[index].name}..."`)
     try {
       const result = await contract.methods
-        .orderAmbulance(index)
+        .pledge(index)
         .send({ from: kit.defaultAccount })
-      notification(`You successfully ordered ambulance from "${hospitals[index].name}".`)
-      getHospitals()
+      notification(`You successfully ordered ambulance from "${campaigns[index].name}".`)
+      getCampaigns()
       getBalance()
     } catch (error) {
       notification(`${error}.`)
@@ -230,85 +229,85 @@ document.querySelector("#marketplace").addEventListener("click", async (e) => {
 }) 
 
 // allow users to search hospitals based on location
-document.querySelector('.btn-outline-success').addEventListener('click', (e) => {
-    e.preventDefault()
-    const searchValue = document.querySelector('.search-bar').value
-    const searchResult = hospitals.filter(hospital => {
-        if(hospital.location.toLowerCase() === searchValue.toLowerCase()) {
-            notificationOff();
-            return hospital;
-        } 
-    })
+// document.querySelector('.btn-outline-success').addEventListener('click', (e) => {
+//     e.preventDefault()
+//     const searchValue = document.querySelector('.search-bar').value
+//     const searchResult = hospitals.filter(hospital => {
+//         if(hospital.location.toLowerCase() === searchValue.toLowerCase()) {
+//             notificationOff();
+//             return hospital;
+//         } 
+//     })
 
-    renderSearch(searchResult)
+//     renderSearch(searchResult)
 
-    if(searchResult.length <= 0) { 
+//     if(searchResult.length <= 0) { 
 
-      notification('result not found')
-  }
+//       notification('result not found')
+//   }
     
-})
+// })
 
 // displays search result in the user interface
-function renderSearch(searchResult) {
-    document.getElementById("marketplace").innerHTML = ""
-    searchResult.forEach((_hospital) => {
-      const newDiv = document.createElement("div")
-      newDiv.className = "col-md-4"
-      newDiv.innerHTML = hospitalTemplate(_hospital)
-      document.getElementById("marketplace").appendChild(newDiv)
-    })
-  }
+// function renderSearch(searchResult) {
+//     document.getElementById("marketplace").innerHTML = ""
+//     searchResult.forEach((_hospital) => {
+//       const newDiv = document.createElement("div")
+//       newDiv.className = "col-md-4"
+//       newDiv.innerHTML = hospitalTemplate(_hospital)
+//       document.getElementById("marketplace").appendChild(newDiv)
+//     })
+//   }
 
-  // notification after users uses the search field
-document.querySelector('.search-bar').addEventListener('input', (e) => {
-    // e.preventDefault()
-    if(e.target.value === ""){
-        notificationOff()
-        getHospitals()
-    }
+//   // notification after users uses the search field
+// document.querySelector('.search-bar').addEventListener('input', (e) => {
+//     // e.preventDefault()
+//     if(e.target.value === ""){
+//         notificationOff()
+//         getHospitals()
+//     }
 
-})
+// })
 
 
 // allows users to rate hospitals
-document.querySelector('#marketplace').addEventListener('click', async (e) => {
+// document.querySelector('#marketplace').addEventListener('click', async (e) => {
   
-    if(e.target.className.includes('rating__star')) {
-      const ratingStars = [...e.target.parentElement.children]
+//     if(e.target.className.includes('rating__star')) {
+//       const ratingStars = [...e.target.parentElement.children]
     
-      ratingStars.forEach(star => {
+//       ratingStars.forEach(star => {
         
-        if(star.dataset.id <= e.target.dataset.id){
+//         if(star.dataset.id <= e.target.dataset.id){
           
-          star.classList.add('fas')
-          star.classList.remove('far')
-        } else if (star.dataset.id > e.target.dataset.id) {
-          star.classList.remove('fas')
-          star.classList.add('far')
-        }
-      })
-    }
-})
+//           star.classList.add('fas')
+//           star.classList.remove('far')
+//         } else if (star.dataset.id > e.target.dataset.id) {
+//           star.classList.remove('fas')
+//           star.classList.add('far')
+//         }
+//       })
+//     }
+// })
 
 // write users rating to smart contract
-document
-  .querySelector("#marketplace")
-  .addEventListener("click", async (e) => {
-    if(e.target.className.includes('rating__star')) {
-      let id = e.target.parentElement.dataset.id;
+// document
+//   .querySelector("#marketplace")
+//   .addEventListener("click", async (e) => {
+//     if(e.target.className.includes('rating__star')) {
+//       let id = e.target.parentElement.dataset.id;
       
-      let selectedRating = (Number(e.target.dataset.id) + 1);
+//       let selectedRating = (Number(e.target.dataset.id) + 1);
   
-    try {
-      notification(`rating ambulance service ...`) 
-      const result = await contract.methods
-        .writeRating(id, selectedRating)
-        .send({ from: kit.defaultAccount })
-    } catch (error) {
-      notification(`${error}.`)
-    }
-    notification(`successfully rated ambulance service`)
-    getHospitals()
-    }
-  })
+//     try {
+//       notification(`rating ambulance service ...`) 
+//       const result = await contract.methods
+//         .writeRating(id, selectedRating)
+//         .send({ from: kit.defaultAccount })
+//     } catch (error) {
+//       notification(`${error}.`)
+//     }
+//     notification(`successfully rated ambulance service`)
+//     getHospitals()
+//     }
+//   })
