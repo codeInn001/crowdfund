@@ -210,16 +210,16 @@ document.querySelector("#marketplace").addEventListener("click", async (e) => {
     const index = e.target.id
     notification("⌛ Waiting for payment approval...")
     try {
-      await approve(campaigns[index].price)
+      await approve(2)
     } catch (error) {
       notification(`${error}.`)
     }
     notification(` Awaiting payment for order of ambulance from "${campaigns[index].name}..."`)
     try {
       const result = await contract.methods
-        .pledge(index)
+        .pledge(1, 2)
         .send({ from: kit.defaultAccount })
-      notification(`You successfully ordered ambulance from "${campaigns[index].name}".`)
+      notification(`You successfully pledged.`)
       getCampaigns()
       getBalance()
     } catch (error) {
