@@ -74,6 +74,7 @@ const getCampaigns = async function() {
     _campaigns.push(_campaign)
   }
   campaigns = await Promise.all(_campaigns)
+  console.log(campaigns)
   renderCampaigns()
 }
 
